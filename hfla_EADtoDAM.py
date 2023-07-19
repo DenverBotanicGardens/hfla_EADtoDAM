@@ -2,17 +2,19 @@ import pandas as pd
 import xml.etree.ElementTree as etree
 import re
 import csv
+import os
 
 #THIS SCRIPT PULLDATA FROM AN EAD XML REPOSITORY AND FORMATS IT INTO CSV FOR UPLOAD INTO THE DBG CHORUS DAM. IT ALSO PULLS INFORMATION FROM THE CONATINER TEMPLATE SO THAT URIS TO EACH RESOURCE CAN BE SUPPLIED.
 
 #Using Archive Space, export both the EAD xml archive and the Container Template csv.
 #------------------------------------------------------------------------------------------------------------------------------#
-#SET the EAD xml archive to be parsed here:                                                                                    #
-ElementTree = etree.parse('HFLA_001_20230718_160733_UTC__ead.xml')                                                             # 
+#SET the EAD xml archive to be parsed here:
+EADfile = 'HFLA_001_20230718_160733_UTC__ead.xml'                                                                                    #
 #SET the Container Template CSV to be parsed here:                                                                             #
 asContainerTemplateCSV = "1689703332.csv"                                                                                 #
 #------------------------------------------------------------------------------------------------------------------------------#
 
+ElementTree = etree.parse(EADfile)                                                             # 
 root = ElementTree.getroot()
 
 result_list = []
@@ -121,7 +123,7 @@ merged_df = pd.merge(data_df, additional_data_df, on=common_identifier, how="lef
 merged_file = "mergedFiles.csv"
 merged_df.to_csv(merged_file, index=False)
 
-print(f"Data merged successfully and saved to '{merged_file}'.")
+#print(f"Data merged successfully and saved to '{merged_file}'.")
 
 #-------------------------------------------------------------------------------------------------------------------------------
 # Format the merged file to remove unwanted columns and create the URI's from the Archival Object ID
@@ -206,3 +208,48 @@ header_mapping = {
 
 # Usage: Rename column headers in "data.csv"
 rename_headers("mergedFiles_columnsRemoved.csv", header_mapping)
+
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------
+#Rename the final version of the data file
+
+dataName = EADfile[0:8]
+def rename_csv(old_filename, new_filename):
+    try:
+        os.rename(old_filename, new_filename)
+        #print(f"CSV file '{old_filename}' renamed to '{new_filename}'.")
+    except FileNotFoundError:
+        print(f"Error: File '{old_filename}' not found.")
+    except FileExistsError:
+        print(f"Error: File '{new_filename}' already exists.")
+
+# Usage: Rename 'old_data.csv' to 'new_data.csv'
+rename_csv("mergedFiles_columnsRemoved.csv", dataName + "_metadataForDAM.csv")
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Delete all the extra files created in the process
+
+def delete_specified_files(directory_path, files_to_delete):
+    try:
+        for file_name in files_to_delete:
+            # Construct the full path for each file
+            file_path = os.path.join(directory_path, file_name)
+
+            # Check if the path corresponds to a file (not a directory)
+            if os.path.isfile(file_path):
+                # Delete the file
+                os.remove(file_path)
+                #print(f"Deleted: {file_path}")
+            else:
+                print(f"File '{file_path}' not found.")
+
+        #print("All specified files deleted successfully.")
+    except FileNotFoundError:
+        print(f"Error: Directory '{directory_path}' not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Usage: Delete specified files from the directory "example_directory"
+directory = "."
+files_to_delete = ["eadOutput_formatted.csv", "eadOutput.csv", "formatted_asContainerTemplateCSV.csv", "mergedFiles.csv"]
+delete_specified_files(directory, files_to_delete)
